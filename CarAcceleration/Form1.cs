@@ -17,7 +17,7 @@ namespace CarAcceleration
         public Form1()
         {
             InitializeComponent();
-            Car car = new Car(label1, label2, label3);
+            car = new Car(label1, label2, label3, textBox1);
         }
         
 
@@ -50,6 +50,25 @@ namespace CarAcceleration
         private void Form1_Load(object sender, EventArgs e)
         {
 
+        }
+
+        private void label4_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            if (button1.Text.Equals("Start"))
+            {
+                car.start();
+                button1.Text = "Stop";
+            }
+            else
+            {
+                car.stop();
+                button1.Text = "Start";
+            }
         }
     }
 }

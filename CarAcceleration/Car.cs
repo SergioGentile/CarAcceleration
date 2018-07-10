@@ -16,19 +16,27 @@ public class Car
     private DateTime time;
     private SqlConnection connection;
     private Label lblSpeed, lblTime, lblStatus;
+    private TextBox txtService;
     //URL used by the dashboard of powerBI
     private static readonly String urlPowerBI = "https://api.powerbi.com/beta/b00367e2-193a-4f48-94de-7245d45c0947/datasets/9ac07350-fe0c-42ec-bc82-f94bfd14bf56/rows?key=q0mZX74BEtH7ng6fkgcW5nrGGE8yI3tIyd%2BfAZ6myt0VxdwVRm4QgOrPPOpLllFXYFvcrNiDUE01p3cDEeD5IA%3D%3D";
-
-    public Car(Label lblSpeed, Label lblTime, Label lblStatus)
-	{
-        
+    private bool end;
+    public Car(Label lblSpeed, Label lblTime, Label lblStatus, TextBox txtServer)
+    {
+        end = false;
         speed = 0;
         time = DateTime.Now;
         //Take all the references to update the UI
         this.lblSpeed = lblSpeed;
         this.lblTime = lblTime;
         this.lblStatus = lblStatus;
+        this.txtService = txtServer;
+        txtService.Text = ".\\SQL2016";
+        lblStatus.Text = "Status: Not Started.";
+    }
 
+    public void start()
+    {
+        end = false;
         //Update the UI 
         setCurrentInformation();
         setLabel(lblStatus, "Status: Not Ready. I'm connecting to the service.\nWait...");
@@ -49,19 +57,19 @@ public class Car
         try
         {
             connection = new SqlConnection();
-            connection.ConnectionString = "Server=.\\SQL2016; Database = CarSpeed; Integrated Security = True;";
+            connection.ConnectionString = "Server=" + txtService.Text.ToString() + "; Database = CarSpeed; Integrated Security = True;";
             connection.Open(); //Clear and create the table into the database if it doesn't exist.
             clearDatabase();
 
             //Update the UI
-            setLabel(lblStatus, "Status: Service start");
+            setLabel(lblStatus, "Status: Service start.");
             lblStatus.ForeColor = System.Drawing.Color.Green;
             setCurrentInformation();
             //Start infinite loop that check for update into SQL Server
             Thread t = new Thread(fetchFromDatabase);
             t.Start();
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             Debug.WriteLine(e.Message);
             setLabel(lblStatus, "Status: Service doesn't start properly.");
@@ -69,7 +77,7 @@ public class Car
 
         }
     }
-  
+
     //Clear the database. Create the table if it doesn't exist.
     private void clearDatabase()
     {
@@ -81,13 +89,13 @@ public class Car
         command.ExecuteNonQuery();
     }
 
-    
+
     //Set the current speed and time in the UI.
     private void setCurrentInformation()
     {
         if (this.lblSpeed.InvokeRequired || this.lblTime.InvokeRequired)
         {
-            this.lblSpeed.BeginInvoke((MethodInvoker)delegate () { this.lblSpeed.Text = "Current speed: " + this.speed + " Km/h";  });
+            this.lblSpeed.BeginInvoke((MethodInvoker)delegate () { this.lblSpeed.Text = "Current speed: " + this.speed + " Km/h"; });
             this.lblTime.BeginInvoke((MethodInvoker)delegate () { this.lblTime.Text = "Current Time: " + this.time; });
         }
         else
@@ -125,13 +133,13 @@ public class Car
         SqlDataReader sReader;
 
         //Polling
-        while (true)
+        while (!end)
         {
             sReader = command.ExecuteReader();
             if (sReader.Read())
             {
                 //If the speed are different, i must update the dashboard
-                if (lastSpeed!= sReader.GetInt32(1))
+                if (lastSpeed != sReader.GetInt32(1))
                 {
                     //Retrieve the actual speed and time of the measure
                     lastSpeed = sReader.GetInt32(1);
@@ -141,12 +149,21 @@ public class Car
                     setCurrentInformation();
                     //Perform an HTTP POST
                     sendToPowerBI(urlPowerBI);
-                    
+
                 }
             }
             sReader.Close();
         }
-      
+
+    }
+
+    public void stop()
+    {
+        end = true;
+        setLabel(lblStatus, "Status: Not Started.");
+        setLabel(lblTime, "");
+        setLabel(lblSpeed, "");
+        lblStatus.ForeColor = System.Drawing.Color.Black;
     }
 
     private void sendToPowerBI(String urlPowerBI)
